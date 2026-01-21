@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Giám Sát Không Khí - Simon House</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 { color: #333; }
+        
+        /* Trạng thái kết nối */
+        #status {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        /* Hộp cảnh báo to đùng */
+        #alert-box {
+            background-color: #2ecc71; /* Màu xanh mặc định */
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            font-size: 2em;
+            font-weight: bold;
+            margin: 20px auto;
+            max-width: 600px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.5s ease;
+        }
+
+        /* Lưới hiển thị thông số */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .card h3 {
+            margin: 0;
+            font-size: 1.2em;
+            color: #555;
+        }
+
+        .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 10px 0;
+        }
+
+        .unit {
+            font-size: 0.8em;
+            color: #888;
+        }
+
+        /* Class để đổi màu khi cảnh báo */
+        .danger-mode {
+            background-color: #e74c3c !important; /* Màu đỏ */
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📡 GIÁM SÁT ENS160 & AHT2x</h1>
+    <div id="status">Đang kết nối tới HiveMQ Server...</div>
+
+    <div id="alert-box">ĐANG CHỜ DỮ LIỆU...</div>
+
+    <div class="grid-container">
+        <div class="card">
+            <h3>Nhiệt độ</h3>
+            <div class="value"><span id="temp">--</span></div>
+            <div class="unit">°C</div>
+        </div>
+
+        <div class="card">
+            <h3>Độ ẩm</h3>
+            <div class="value"><span id="hum">--</span></div>
+            <div class="unit">%</div>
+        </div>
+
+        <div class="card">
+            <h3>AQI</h3>
+            <div class="value"><span id="aqi">--</span></div>
+            <div class="unit">Chỉ số (1-5)</div>
+        </div>
+
+        <div class="card">
+            <h3>eCO2</h3>
+            <div class="value"><span id="eco2">--</span></div>
+            <div class="unit">ppm</div>
+        </div>
+
+        <div class="card">
+            <h3>TVOC</h3>
+            <div class="value"><span id="tvoc">--</span></div>
+            <div class="unit">ppb</div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Cấu hình kết nối
+        // Lưu ý: Trình duyệt dùng WebSocket (port 8000), ESP32 dùng TCP (port 1883)
+        // Nhưng cả 2 đều nói chuyện với nhau được qua Broker.
+        const brokerUrl = 'wss://broker.hivemq.com:8000/mqtt';
+        
+        const topics = {
+            alert: 'simon_house/air/alert',
+            temp:  'simon_house/air/temp',
+            hum:   'simon_house/air/hum',
+            aqi:   'simon_house/air/aqi',
+            eco2:  'simon_house/air/eco2',
+            tvoc:  'simon_house/air/tvoc'
+        };
+
+        // 2. Kết nối MQTT
+        const client = mqtt.connect(brokerUrl);
+
+        client.on('connect', () => {
+            console.log('Đã kết nối tới MQTT Broker!');
+            document.getElementById('status').innerText = '🟢 Đã kết nối tới Server';
+            document.getElementById('status').style.color = 'green';
+
+            // Đăng ký nhận tin từ tất cả topic của nhà simon
+            client.subscribe('simon_house/air/#');
+        });
+
+        // 3. Xử lý khi nhận được tin nhắn
+        client.on('message', (topic, message) => {
+            const msg = message.toString();
+            console.log(topic, msg); // Xem log trong Console (F12)
+
+            // Cập nhật giao diện dựa trên topic
+            switch(topic) {
+                case topics.temp:
+                    document.getElementById('temp').innerText = msg;
+                    break;
+                case topics.hum:
+                    document.getElementById('hum').innerText = msg;
+                    break;
+                case topics.aqi:
+                    document.getElementById('aqi').innerText = msg;
+                    break;
+                case topics.eco2:
+                    document.getElementById('eco2').innerText = msg;
+                    break;
+                case topics.tvoc:
+                    document.getElementById('tvoc').innerText = msg;
+                    break;
+                case topics.alert:
+                    handleAlert(msg);
+                    break;
+            }
+        });
+
+        // Hàm xử lý giao diện Cảnh báo
+        function handleAlert(msg) {
+            const box = document.getElementById('alert-box');
+            box.innerText = msg;
+
+            if (msg.includes("CANH BAO")) {
+                // Nếu có chữ "CANH BAO" -> Đổi màu đỏ
+                box.classList.add('danger-mode');
+                box.style.backgroundColor = '#e74c3c';
+            } else {
+                // Nếu an toàn -> Màu xanh
+                box.classList.remove('danger-mode');
+                box.style.backgroundColor = '#2ecc71';
+            }
+        }
+    </script>
+</body>
+</html>
