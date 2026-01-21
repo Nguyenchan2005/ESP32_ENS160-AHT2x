@@ -125,7 +125,8 @@
         // 1. Cấu hình kết nối
         // Lưu ý: Trình duyệt dùng WebSocket (port 8000), ESP32 dùng TCP (port 1883)
         // Nhưng cả 2 đều nói chuyện với nhau được qua Broker.
-        const brokerUrl = 'wss://broker.hivemq.com:8000/mqtt';
+       // Đổi sang Server EMQX, dùng cổng 8083 cho WebSocket
+        const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
         
         const topics = {
             alert: 'simon_house/air/alert',
