@@ -1,101 +1,157 @@
-<script>
-        // 1. Cấu hình kết nối HiveMQ Cloud
-        // QUAN TRỌNG: 
-        // - Giao thức là wss:// (Secure WebSocket)
-        // - Cổng là 8884 (Không phải 8883 của ESP32)
-        const host = 'e35ff2a8c16f4c60981704de63982340.s1.eu.hivemq.cloud';
-        const port = 8884;
-        const clientId = 'WebClient_' + Math.random().toString(16).substr(2, 8);
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Giám Sát Không Khí - Simon House</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; text-align: center; padding: 20px; }
+        h1 { color: #333; }
+        #status { font-size: 14px; color: #666; margin-bottom: 20px; font-weight: bold;}
+        
+        #alert-box {
+            background-color: #95a5a6; color: white; padding: 20px;
+            border-radius: 15px; font-size: 1.5em; font-weight: bold;
+            margin: 20px auto; max-width: 600px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
 
-        const options = {
-            keepalive: 60,
-            clientId: clientId,
-            protocolId: 'MQTT',
-            protocolVersion: 4,
-            clean: true,
-            reconnectPeriod: 1000,
-            connectTimeout: 30 * 1000,
-            // --- BẮT BUỘC PHẢI CÓ USER/PASS ---
-            username: 'Huflit',
-            password: 'Huflit123456', // <--- NHẬP MẬT KHẨU THẬT VÀO ĐÂY
-            // ----------------------------------
-            rejectUnauthorized: false
+        .grid-container {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px; max-width: 800px; margin: 0 auto;
+        }
+
+        .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card h3 { margin: 0; font-size: 1em; color: #555; }
+        .value { font-size: 1.8em; font-weight: bold; color: #2c3e50; margin: 10px 0; }
+        .unit { font-size: 0.8em; color: #888; }
+        
+        .danger-mode { background-color: #e74c3c !important; animation: pulse 1s infinite; }
+        .safe-mode { background-color: #2ecc71 !important; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    </script>
+</head>
+<body>
+
+    <h1>📡 GIÁM SÁT KHÔNG KHÍ (HiveMQ)</h1>
+    <div id="status">🟡 Đang kết nối Server...</div>
+
+    <div id="alert-box">ĐANG CHỜ DỮ LIỆU...</div>
+
+    <div class="grid-container">
+        <div class="card">
+            <h3>Nhiệt độ</h3>
+            <div class="value"><span id="temp">--</span></div>
+            <div class="unit">°C</div>
+        </div>
+        <div class="card">
+            <h3>Độ ẩm</h3>
+            <div class="value"><span id="hum">--</span></div>
+            <div class="unit">%</div>
+        </div>
+        <div class="card">
+            <h3>AQI</h3>
+            <div class="value"><span id="aqi">--</span></div>
+            <div class="unit">Index</div>
+        </div>
+        <div class="card">
+            <h3>eCO2</h3>
+            <div class="value"><span id="eco2">--</span></div>
+            <div class="unit">ppm</div>
+        </div>
+        <div class="card">
+            <h3>TVOC</h3>
+            <div class="value"><span id="tvoc">--</span></div>
+            <div class="unit">ppb</div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CẤU HÌNH HIVEMQ CLOUD ---
+        // Link Server (Không có wss://, chỉ lấy tên miền)
+        var mqtt_server = "e35ff2a8c16f4c60981704de63982340.s1.eu.hivemq.cloud"; 
+        var mqtt_port = 8884; // Cổng Web Secure
+        
+        // --- ĐIỀN USERNAME / PASSWORD CỦA BẠN VÀO ĐÂY ---
+        var mqtt_user = "Huflit"; 
+        var mqtt_pass = "Huflit123456"; // Mật khẩu bạn đã tạo
+
+        // Tạo Client ID ngẫu nhiên
+        var client = new Paho.MQTT.Client(mqtt_server, mqtt_port, "Web_" + new Date().getTime());
+
+        // Cài đặt hàm xử lý
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = onMessageArrived;
+
+        // Cấu hình kết nối
+        var options = {
+            useSSL: true,         // BẮT BUỘC
+            userName: mqtt_user,  // BẮT BUỘC
+            password: mqtt_pass,  // BẮT BUỘC
+            onSuccess: onConnect,
+            onFailure: onFail
         };
 
-        // Địa chỉ kết nối đầy đủ
-        const connectUrl = `wss://${host}:${port}/mqtt`;
+        console.log("Đang kết nối đến " + mqtt_server);
+        client.connect(options);
 
-        const topics = {
-            alert: 'simon_house/air/alert',
-            temp:  'simon_house/air/temp',
-            hum:   'simon_house/air/hum',
-            aqi:   'simon_house/air/aqi',
-            eco2:  'simon_house/air/eco2',
-            tvoc:  'simon_house/air/tvoc'
-        };
+        // --- CÁC HÀM XỬ LÝ ---
+        function onConnect() {
+            console.log("✅ Đã kết nối HiveMQ!");
+            document.getElementById("status").innerText = "🟢 Đã kết nối HiveMQ Cloud";
+            document.getElementById("status").style.color = "green";
+            
+            // Đăng ký nhận tin từ tất cả topic
+            client.subscribe("simon_house/air/#");
+        }
 
-        console.log('Đang kết nối tới:', connectUrl);
-        const client = mqtt.connect(connectUrl, options);
+        function onFail(responseObject) {
+            console.log("❌ Lỗi kết nối: " + responseObject.errorMessage);
+            document.getElementById("status").innerText = "🔴 Lỗi kết nối: " + responseObject.errorMessage;
+            document.getElementById("status").style.color = "red";
+        }
 
-        client.on('connect', () => {
-            console.log('✅ Đã kết nối tới HiveMQ!');
-            const statusDiv = document.getElementById('status');
-            statusDiv.innerText = '🟢 Đã kết nối tới Server HiveMQ';
-            statusDiv.style.color = 'green';
-
-            // Subscribe tất cả topic
-            client.subscribe('simon_house/air/#', (err) => {
-                if (!err) console.log('Đã đăng ký nhận tin');
-            });
-        });
-
-        client.on('error', (err) => {
-            console.error('Lỗi kết nối:', err);
-            client.end();
-        });
-
-        client.on('message', (topic, message) => {
-            const msg = message.toString();
-            console.log(`Nhận tin [${topic}]: ${msg}`);
-
-            switch(topic) {
-                case topics.temp:
-                    document.getElementById('temp').innerText = msg;
-                    break;
-                case topics.hum:
-                    document.getElementById('hum').innerText = msg;
-                    break;
-                case topics.aqi:
-                    document.getElementById('aqi').innerText = msg;
-                    // Đổi màu chữ AQI dựa trên mức độ
-                    const aqiVal = parseInt(msg);
-                    const aqiEl = document.getElementById('aqi');
-                    if(aqiVal >= 3) aqiEl.style.color = 'red';
-                    else aqiEl.style.color = '#2c3e50';
-                    break;
-                case topics.eco2:
-                    document.getElementById('eco2').innerText = msg;
-                    break;
-                case topics.tvoc:
-                    document.getElementById('tvoc').innerText = msg;
-                    break;
-                case topics.alert:
-                    handleAlert(msg);
-                    break;
+        function onConnectionLost(responseObject) {
+            if (responseObject.errorCode !== 0) {
+                console.log("Mất kết nối: " + responseObject.errorMessage);
+                document.getElementById("status").innerText = "🟡 Mất kết nối...";
+                document.getElementById("status").style.color = "orange";
             }
-        });
+        }
+
+        function onMessageArrived(message) {
+            var topic = message.destinationName;
+            var msg = message.payloadString;
+            console.log("Nhận [" + topic + "]: " + msg);
+
+            // Cập nhật giao diện
+            if (topic.includes("temp")) document.getElementById("temp").innerText = msg;
+            else if (topic.includes("hum")) document.getElementById("hum").innerText = msg;
+            else if (topic.includes("aqi")) {
+                document.getElementById("aqi").innerText = msg;
+                // Đổi màu AQI nếu cao
+                var val = parseInt(msg);
+                document.getElementById("aqi").style.color = (val >= 3) ? "red" : "#2c3e50";
+            }
+            else if (topic.includes("eco2")) document.getElementById("eco2").innerText = msg;
+            else if (topic.includes("tvoc")) document.getElementById("tvoc").innerText = msg;
+            else if (topic.includes("alert")) handleAlert(msg);
+        }
 
         function handleAlert(msg) {
-            const box = document.getElementById('alert-box');
+            var box = document.getElementById("alert-box");
             box.innerText = msg;
-
-            // Logic đổi màu hộp cảnh báo
+            
             if (msg.includes("CANH BAO") || msg.includes("O NHIEM")) {
-                box.classList.add('danger-mode');
-                box.style.backgroundColor = '#e74c3c';
+                box.className = "danger-mode";
+            } else if (msg.includes("An toan") || msg.includes("khoi dong")) {
+                box.className = "safe-mode";
             } else {
-                box.classList.remove('danger-mode');
-                box.style.backgroundColor = '#2ecc71';
+                box.className = "";
+                box.style.backgroundColor = "#95a5a6";
             }
         }
     </script>
+</body>
+</html>
