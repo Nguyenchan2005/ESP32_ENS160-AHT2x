@@ -1,450 +1,445 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Giám Sát Không Khí - Simon House</title>
     <!-- fonts & icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"
+        type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            /* Light Theme Default */
+            --bg-body: #f1f5f9;
+            --surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --primary: #4f46e5;
+            --primary-light: #e0e7ff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border: rgba(0, 0, 0, 0.04);
+            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+            --shadow-md: 0 10px 25px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+            --shadow-lg: 0 20px 40px -5px rgba(0, 0, 0, 0.06), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+            --radius-md: 16px;
+            --radius-lg: 24px;
         }
+
+        body.dark-mode {
+            /* Dark Theme Overrides */
+            --bg-body: #0f172a;
+            --surface: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary-light: rgba(79, 70, 229, 0.2);
+            --border: rgba(255, 255, 255, 0.05);
+            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 10px 25px -3px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 20px 40px -5px rgba(0, 0, 0, 0.4);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #5a6bdc 0%, #7d5cc8 100%);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
             min-height: 100vh;
-            padding: 20px;
-            color: #2e3a59;
+            padding: 24px 16px;
+            -webkit-font-smoothing: antialiased;
+            transition: background 0.3s, color 0.3s;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+        .container { max-width: 1200px; margin: 0 auto; position: relative; }
 
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        /* Weather Sidebar */
-        .weather-sidebar {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            height: fit-content;
-        }
-
-        .weather-sidebar h3 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 1.2em;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
-        }
-
-        .weather-current {
-            text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .weather-icon {
-            font-size: 3em;
-            margin-bottom: 10px;
-        }
-
-        .weather-temp {
-            font-size: 2em;
-            font-weight: 700;
-            color: #667eea;
-            margin-bottom: 5px;
-        }
-
-        .weather-desc {
-            color: #7f8c8d;
-            font-size: 0.95em;
-            margin-bottom: 10px;
-        }
-
-        .weather-location {
-            font-size: 0.85em;
-            color: #bdc3c7;
-        }
-
-        .weather-details {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .weather-detail-item {
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px;
+        /* --- Global Header --- */
+        .glass-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.9em;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            padding: 16px 24px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 24px;
+            transition: background 0.3s;
+        }
+        body.dark-mode .glass-header {
+            background: rgba(30, 41, 59, 0.8);
         }
 
-        .weather-detail-label {
-            color: #7f8c8d;
-            font-weight: 600;
+        .header-title-wrapper { display: flex; align-items: center; gap: 12px; }
+
+        .brand-icon {
+            width: 44px; height: 44px;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 20px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
         }
 
-        .weather-detail-value {
-            color: #667eea;
-            font-weight: 700;
-        }
+        .glass-header h1 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; color: var(--text-main); line-height: 1.2; }
+        .glass-header .subtitle { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
 
-        .weather-forecast {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-
-        .forecast-title {
-            font-size: 0.95em;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 12px;
-        }
-
-        .forecast-item {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            text-align: center;
-            font-size: 0.85em;
-        }
-
-        .forecast-time {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .forecast-temp {
-            font-size: 1.1em;
-        }
-
-        @media (max-width: 1024px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-            /* allow metrics to wrap on smaller viewports */
-            .metrics-grid {
-                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            }
-        }
-
-        /* Header */
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-            padding: 20px;
-        }
-
-        .header h1 {
-            font-size: 2.2em;
-            margin-bottom: 8px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
-        }
-
-        .header .status {
-            font-size: 0.9em;
-            font-weight: 500;
-            padding: 6px 14px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 20px;
-            display: inline-block;
-            backdrop-filter: blur(8px);
-        }
-
-        /* Greeting Box */
-        .greeting-box {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 8px 12px;
-            margin-bottom: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-            border-left: 4px solid #4a6cf7;
+        .header-controls {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
         }
 
-        .greeting-box .greeting-text {
-            font-size: 1em;
-            color: #3a3f5c;
+        .theme-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            width: 40px; height: 40px; border-radius: 50%;
+            cursor: pointer; font-size: 18px; color: var(--text-main);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: var(--shadow-sm); transition: 0.2s;
+        }
+        .theme-btn:hover { background: var(--primary-light); color: var(--primary); }
+
+        .status {
+            font-size: 0.85rem; font-weight: 600; padding: 8px 16px; border-radius: 40px;
+            display: flex; align-items: center; gap: 8px; background: var(--surface); box-shadow: var(--shadow-sm);
         }
 
-        .greeting-box .greeting-icon {
-            font-size: 1.5em;
-        }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status.connected .status-dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+        .status.disconnected .status-dot { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+        .status.warning .status-dot { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
 
-        .greeting-box .greeting-text {
-            font-size: 1em;
-            font-weight: 600;
-        }
+        /* --- Dashboard Layout --- */
+        .dashboard-layout { display: grid; grid-template-columns: 2fr 1.1fr; gap: 24px; }
+        .left-panel { display: flex; flex-direction: column; gap: 24px; }
 
-        .greeting-icon {
-            font-size: 2.5em;
-            margin-bottom: 15px;
+        /* Banners */
+        .banner-group { display: flex; flex-direction: column; gap: 12px; }
+        .banner {
+            display: flex; align-items: center; gap: 16px; padding: 16px 20px;
+            border-radius: var(--radius-md); font-weight: 600; box-shadow: var(--shadow-sm); transition: all 0.3s ease;
         }
+        .greeting-banner { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; border: 1px solid rgba(255, 255, 255, 0.05); }
+        .greeting-icon { font-size: 28px; background: rgba(255, 255, 255, 0.1); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .greeting-text { line-height: 1.4; font-size: 0.95rem; }
 
-        .greeting-text {
-            font-size: 1.3em;
-            font-weight: 600;
-            color: #333;
-            line-height: 1.6;
-        }
+        .alert-banner { background: var(--surface); color: var(--text-main); border-left: 6px solid var(--border); }
+        .alert-banner.safe { border-left-color: var(--success); background: #f0fdf4; color: #166534; }
+        .alert-banner.warning { border-left-color: var(--warning); background: #fffbeb; color: #92400e; }
+        .alert-banner.danger { border-left-color: var(--danger); background: #fef2f2; color: #991b1b; animation: pulseRed 2s infinite; }
+        
+        body.dark-mode .alert-banner.safe { background: rgba(22, 101, 52, 0.2); color: #4ade80; border-left-color: #4ade80;}
+        body.dark-mode .alert-banner.warning { background: rgba(146, 64, 14, 0.2); color: #facc15; border-left-color: #fbd38d;}
+        body.dark-mode .alert-banner.danger { background: rgba(153, 27, 27, 0.2); color: #f87171; border-left-color: #f87171;}
 
-        /* Alert Box */
-        #alert-box {
-            background: white;
-            border-radius: 15px;
-            padding: 8px 12px;
-            margin-bottom: 10px;
-            font-size: 1em;
-            font-weight: 600;
-            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
-            border-left: 5px solid #95a5a6;
-            color: #333;
-            transition: all 0.3s ease;
-        }
-        /* left column wrapper */
-        .content-left {
-            display: flex;
-            flex-direction: column;
-        }
+        @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
 
-        .alert-box.warning {
-            background: linear-gradient(135deg, #fff5e6 0%, #ffe6e6 100%);
-            border-left-color: #ff9800;
-            color: #d84315;
+        /* Tooltip */
+        .info-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 16px; height: 16px; border-radius: 50%; background: var(--border); color: var(--text-muted);
+            font-size: 11px; font-weight: bold; cursor: help; margin-left: 6px; position: relative;
         }
+        .info-btn:hover { background: var(--primary); color: white; }
+        
+        .info-btn .tooltip-text {
+            visibility: hidden; width: 220px; background-color: var(--text-main); color: var(--bg-body);
+            text-align: left; border-radius: 8px; padding: 10px; position: absolute; z-index: 100;
+            bottom: 150%; left: 50%; transform: translateX(-50%); font-size: 0.8rem; font-weight: 500;
+            opacity: 0; transition: opacity 0.3s; box-shadow: var(--shadow-md); pointer-events: none;
+            line-height: 1.4; white-space: normal;
+        }
+        .info-btn .tooltip-text::after {
+            content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+            border-width: 5px; border-style: solid; border-color: var(--text-main) transparent transparent transparent;
+        }
+        .info-btn:hover .tooltip-text { visibility: visible; opacity: 1; }
+        body.dark-mode .info-btn .tooltip-text { background-color: #334155; color: #f8fafc; }
+        body.dark-mode .info-btn .tooltip-text::after { border-color: #334155 transparent transparent transparent; }
 
-        .alert-box.danger {
-            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-            border-left-color: #e74c3c;
-            color: #c62828;
-            animation: pulse 1.5s infinite;
-        }
-
-        .alert-box.safe {
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-            border-left-color: #2ecc71;
-            color: #2e7d32;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-            100% { transform: scale(1); }
-        }
-
-        /* Metrics Grid */
-        .metrics-grid {
-            display: grid;
-            /* force five cards per row on larger screens */
-            grid-template-columns: repeat(5, 1fr);
-            gap: 15px;
-            margin-bottom: 30px;
-        }
+        /* Metrics */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
 
         .metric-card {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 18px 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            text-align: center;
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            background: var(--surface); padding: 20px; border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm); border: 1px solid var(--border); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s;
         }
+        .metric-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
 
-        .metric-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-        }
+        .metric-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .metric-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        
+        .ic-temp { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .ic-hum { background: rgba(14, 165, 233, 0.15); color: #0ea5e9; }
+        .ic-aqi { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+        .ic-eco2 { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .ic-tvoc { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+        .ic-pm25 { background: rgba(100, 116, 139, 0.15); color: #8ba2c4; }
 
-        .metric-card h3 {
-            font-size: 0.95em;
-            color: #4a5476;
-            margin-bottom: 8px;
-            text-transform: none;
-            letter-spacing: 0.5px;
-        }
+        .metric-title { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+        .metric-value { font-size: 1.75rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; display: flex; align-items: baseline; gap: 4px; }
+        .metric-unit { font-size: 0.875rem; font-weight: 600; color: var(--text-muted); margin-top: -2px; }
 
-        .metric-card .value {
-            font-size: 2em;
-            font-weight: 700;
-            color: #4a6cf7;
-            margin-bottom: 4px;
-        }
+        /* Gauge Area */
+        .gauge-wrapper { position: relative; width: 100%; height: 90px; margin-top: 5px; display: flex; flex-direction: column; align-items: center;}
+        .gauge-canvas { width: 100% !important; height: 100% !important; }
+        .gauge-text-val { position: absolute; bottom: 8px; font-size: 1.6rem; font-weight: 800; color: var(--text-main); }
+        .gauge-unit { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); position: absolute; bottom: -8px;}
 
-        .metric-card .unit {
-            font-size: 0.8em;
-            color: #95a1c3;
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, #e2e8f0 25%, #cbd5e1 50%, #e2e8f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            color: transparent !important;
+            border-radius: 6px;
+            display: inline-block;
+            min-width: 40px;
         }
+        body.dark-mode .skeleton {
+            background: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
+            background-size: 200% 100%;
+        }
+        @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-        /* Chart Section */
-        .chart-section {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
 
-        .chart-section h2 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 1.5em;
+        /* Chart */
+        .chart-card { background: var(--surface); padding: 24px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .chart-title { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        .chart-title-icon { background: var(--primary-light); color: var(--primary); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        
+        .btn-export {
+            background: var(--primary-light); color: var(--primary); border: none; padding: 8px 16px;
+            border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; gap: 6px; font-family: 'Plus Jakarta Sans', sans-serif;
         }
+        .btn-export:hover { background: var(--primary); color: white; }
 
-        #tempChart {
-            max-height: 300px;
-        }
+        .chart-wrapper { position: relative; height: 280px; width: 100%; }
 
-        /* Footer */
-        .footer {
-            text-align: center;
-            color: #f0f0f0;
-            padding: 12px;
-            font-size: 0.8em;
-            opacity: 0.7;
+        /* --- Weather Sidebar --- */
+        .weather-sidebar { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow-md); border: 1px solid var(--border); height: fit-content; }
+        .w-header { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .w-hero {
+            background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%); border-radius: var(--radius-md); padding: 30px 20px; color: white;
+            text-align: center; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2); margin-bottom: 20px;
         }
+        .w-hero::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.05); width: 150px; height: 150px; border-radius: 50%; top: -40px; right: -40px; }
+        .w-hero-icon { font-size: 3.5rem; line-height: 1; margin-bottom: 12px; text-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        .w-hero-temp { font-size: 3.5rem; font-weight: 800; line-height: 1; margin-bottom: 8px; letter-spacing: -1px; }
+        .w-hero-desc { font-size: 1.1rem; font-weight: 500; opacity: 0.9; }
+        .w-hero-loc { display: inline-flex; align-items: center; gap: 4px; background: rgba(0, 0, 0, 0.2); padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; margin-top: 12px; backdrop-filter: blur(4px); }
+
+        .w-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+        .w-detail-item { background: var(--bg-body); padding: 14px; border-radius: 12px; border: 1px solid var(--border); }
+        .w-detail-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .w-detail-value { font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
+
+        /* Forecast Scroll */
+        .forecast-container { border-top: 1px solid var(--border); padding-top: 20px; }
+        .forecast-title { font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin-bottom: 12px; }
+        .forecast-scroll { display: flex; overflow-x: auto; gap: 12px; padding-bottom: 12px; scrollbar-width: none; -ms-overflow-style: none; }
+        .forecast-scroll::-webkit-scrollbar { display: none; }
+        
+        .forecast-item {
+            min-width: 80px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 14px;
+            padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: background 0.2s;
+        }
+        .forecast-item:hover { background: #e2e8f0; }
+
+        .f-time { font-size: 0.8rem; color: var(--text-muted); font-weight: 700; }
+        .f-icon { font-size: 1.5rem; }
+        .f-temp { font-size: 1rem; font-weight: 800; color: var(--text-main); }
+
+        .footer { text-align: center; padding: 30px 0; color: var(--text-muted); font-size: 0.85rem; font-weight: 500; }
 
         /* Responsive */
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 1.8em;
-            }
-            
-            .metrics-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+        @media (max-width: 1024px) {
+            .dashboard-layout { display: flex; flex-direction: column; }
+            .weather-sidebar { order: 1; position: static; }
+            .left-panel { order: 2; }
+            .w-details-grid { grid-template-columns: repeat(4, 1fr); }
         }
-
+        @media (max-width: 768px) {
+            .glass-header { flex-direction: column; gap: 16px; text-align: center; }
+            .w-details-grid { grid-template-columns: repeat(2, 1fr); }
+            .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+        }
         @media (max-width: 480px) {
-            .metrics-grid {
-                grid-template-columns: 1fr;
-            }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
-<body>
 
+<body>
     <div class="container">
         <!-- Header -->
-        <div class="header">
-            <h1>GIÁM SÁT KHÔNG KHÍ</h1>
-            <div class="status" id="status">🟡 Đang kết nối...</div>
-        </div>
-
-        <!-- Main content row containing greeting/alert/metrics and weather -->
-        <div class="main-content">
-            <div class="content-left">
-                <!-- Greeting Box -->
-                <div class="greeting-box">
-                    <div class="greeting-icon" id="greetingIcon">👋</div>
-                    <div class="greeting-text" id="greetingText">Chào bạn! Đang tải dữ liệu...</div>
+        <header class="glass-header">
+            <div class="header-title-wrapper">
+                <div class="brand-icon">💨</div>
+                <div>
+                    <h1>Giám Sát Không Khí</h1>
+                    <div class="subtitle">Simon House Smart Dashboard</div>
                 </div>
+            </div>
+            
+            <div class="header-controls">
+                <button id="themeToggle" class="theme-btn" onclick="toggleTheme()" title="Chế độ Tối/Sáng">🌙</button>
+                <div class="status" id="status"><span class="status-dot"></span> Đang kết nối...</div>
+            </div>
+        </header>
 
-                <!-- Alert Box -->
-                <div id="alert-box" class="alert-box">ĐANG CHỜ DỮ LIỆU...</div>
+        <div class="dashboard-layout">
+            <!-- Left Panel -->
+            <div class="left-panel">
+                <!-- Banners -->
+                <div class="banner-group">
+                    <div class="banner greeting-banner">
+                        <div class="greeting-icon" id="greetingIcon">👋</div>
+                        <div class="greeting-text" id="greetingText">Hệ thống đang đồng bộ dữ liệu...</div>
+                    </div>
+                    <div id="alert-box" class="banner alert-banner">ĐANG CHỜ DỮ LIỆU...</div>
+                </div>
 
                 <!-- Metrics Grid -->
                 <div class="metrics-grid">
-            <div class="metric-card">
-                <h3>Nhiệt độ</h3>
-                <div class="value"><span id="temp">--</span>°C</div>
-                <div class="unit">Celsius</div>
-            </div>
-            <div class="metric-card">
-                <h3>Độ ẩm</h3>
-                <div class="value"><span id="hum">--</span>%</div>
-                <div class="unit">Độ ẩm</div>
-            </div>
-            <div class="metric-card">
-                <h3>AQI</h3>
-                <div class="value"><span id="aqi">--</span></div>
-                <div class="unit">Index</div>
-            </div>
-            <div class="metric-card">
-                <h3>eCO2</h3>
-                <div class="value"><span id="eco2">--</span> </div>
-                <div class="unit">ppm</div>
-            </div>
-            <div class="metric-card">
-                <h3>TVOC</h3>
-                <div class="value"><span id="tvoc">--</span></div>
-                <div class="unit">ppb</div>
-            </div>
-        </div>
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon ic-temp">🌡️</div>
+                            <div class="metric-title">Nhiệt độ</div>
+                        </div>
+                        <div class="metric-value"><span id="temp" class="skeleton">00.0</span><span class="metric-unit">°C</span></div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon ic-hum">💧</div>
+                            <div class="metric-title">Độ ẩm</div>
+                        </div>
+                        <div class="metric-value"><span id="hum" class="skeleton">00.0</span><span class="metric-unit">%</span></div>
+                    </div>
 
-        <!-- Chart Section -->
-        <div class="chart-section">
-            <h2>📉 Biểu đồ Nhiệt độ</h2>
-            <canvas id="tempChart"></canvas>
-        </div>
+                    <!-- PM2.5 (Gauge Chart) -->
+                    <div class="metric-card">
+                        <div class="metric-header" style="margin-bottom:0px;">
+                            <div class="metric-icon ic-pm25">🌬️</div>
+                            <div class="metric-title">Bụi PM2.5
+                                <div class="info-btn">?<span class="tooltip-text">Bụi siêu mịn (<2.5 micromet), có thể lọt vào máu. Tốt: < 35 µg/m³. Báo động: > 50 µg/m³.</span></div>
+                            </div>
+                        </div>
+                        <div class="gauge-wrapper">
+                            <canvas id="pm25Gauge" class="gauge-canvas"></canvas>
+                            <div class="gauge-text-val skeleton" id="pm25">--</div>
+                            <div class="gauge-unit">µg/m³</div>
+                        </div>
+                    </div>
+
+                    <!-- AQI (Gauge Chart) -->
+                    <div class="metric-card">
+                        <div class="metric-header" style="margin-bottom:0px;">
+                            <div class="metric-icon ic-aqi">🍃</div>
+                            <div class="metric-title">AQI / Không khí
+                                <div class="info-btn">?<span class="tooltip-text">Chỉ số Chất lượng Không khí tổng hợp. Càng thấp càng an toàn. Mức bắt đầu báo động: 3 (Thang điểm 5).</span></div>
+                            </div>
+                        </div>
+                        <div class="gauge-wrapper">
+                            <canvas id="aqiGauge" class="gauge-canvas"></canvas>
+                            <div class="gauge-text-val skeleton" id="aqi">--</div>
+                            <div class="gauge-unit">Index</div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon ic-eco2">☁️</div>
+                            <div class="metric-title">eCO2
+                                <div class="info-btn">?<span class="tooltip-text">Mức độ ngột ngạt (Khí Cacbonic). Thông gió tốt: < 1000 ppm. Cảnh báo ngột ngạt: > 1000 ppm.</span></div>
+                            </div>
+                        </div>
+                        <div class="metric-value"><span id="eco2" class="skeleton">0000</span><span class="metric-unit">ppm</span></div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon ic-tvoc">🧪</div>
+                            <div class="metric-title">TVOC
+                                <div class="info-btn">?<span class="tooltip-text">Hữu cơ bay hơi (Mùi sơn, rác, hóa chất...). Lý tưởng: < 220 ppb. Kém/Có mùi lạ: > 660 ppb.</span></div>
+                            </div>
+                        </div>
+                        <div class="metric-value"><span id="tvoc" class="skeleton">0000</span><span class="metric-unit">ppb</span></div>
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">
+                            <div class="chart-title-icon">📈</div>
+                            Biểu đồ Nhiệt độ
+                        </div>
+                        <button class="btn-export" onclick="exportCSV()">
+                            📥 Xuất CSV
+                        </button>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="tempChart"></canvas>
+                    </div>
+                </div>
             </div>
 
-            <!-- Weather Sidebar -->
+            <!-- Right Panel: Weather Sidebar -->
             <div class="weather-sidebar">
-                <h3>Dự Báo Thời Tiết</h3>
-                
-                <div class="weather-current">
-                    <div class="weather-icon" id="weatherIcon">⛅</div>
-                    <div class="weather-temp"><span id="weatherTemp">--</span>°C</div>
-                    <div class="weather-desc" id="weatherDesc">Đang tải...</div>
-                    <div class="weather-location" id="weatherLocation">--</div>
+                <div class="w-header">☁️ Thời tiết khu vực</div>
+                <div class="w-hero">
+                    <div class="w-hero-icon" id="weatherIcon">⛅</div>
+                    <div class="w-hero-temp"><span id="weatherTemp" class="skeleton">00</span>°C</div>
+                    <div class="w-hero-desc" id="weatherDesc">Đang tải...</div>
+                    <div class="w-hero-loc">📍 <span id="weatherLocation">--</span></div>
                 </div>
 
-                <div class="weather-details">
-                    <div class="weather-detail-item">
-                        <span class="weather-detail-label">💨 Gió</span>
-                        <span class="weather-detail-value" id="weatherWind">--</span>
+                <div class="w-details-grid">
+                    <div class="w-detail-item">
+                        <div class="w-detail-label">💨 Tốc độ gió</div>
+                        <div class="w-detail-value"><span id="weatherWind" class="skeleton">00</span></div>
                     </div>
-                    <div class="weather-detail-item">
-                        <span class="weather-detail-label">💧 Độ Ẩm</span>
-                        <span class="weather-detail-value" id="weatherHumidity">--</span>
+                    <div class="w-detail-item">
+                        <div class="w-detail-label">💧 Độ ẩm</div>
+                        <div class="w-detail-value"><span id="weatherHumidity" class="skeleton">00</span></div>
                     </div>
-                    <div class="weather-detail-item">
-                        <span class="weather-detail-label">🔽 Áp Suất</span>
-                        <span class="weather-detail-value" id="weatherPressure">--</span>
+                    <div class="w-detail-item">
+                        <div class="w-detail-label">🔽 Áp suất</div>
+                        <div class="w-detail-value"><span id="weatherPressure" class="skeleton">0000</span></div>
                     </div>
-                    <div class="weather-detail-item">
-                        <span class="weather-detail-label">👁️ Tầm Nhìn</span>
-                        <span class="weather-detail-value" id="weatherVisibility">--</span>
+                    <div class="w-detail-item">
+                        <div class="w-detail-label">👁️ Tầm nhìn</div>
+                        <div class="w-detail-value"><span id="weatherVisibility" class="skeleton">00</span></div>
                     </div>
                 </div>
 
-                <div class="weather-forecast">
-                    <div class="forecast-title">📅 Dự báo 24h</div>
-                    <div id="forecastContainer"></div>
+                <div class="forecast-container">
+                    <div class="forecast-title">📅 Dự báo 24h tới</div>
+                    <div class="forecast-scroll" id="forecastContainer">
+                        <!-- Forecast items injected via JS -->
+                        <div class="forecast-item"><div class="skeleton">000</div></div>
+                        <div class="forecast-item"><div class="skeleton">000</div></div>
+                        <div class="forecast-item"><div class="skeleton">000</div></div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Footer -->
-    <div class="footer">
-        <p>🏠 Simon House - Hệ Thống Giám Sát Không Khí Thông Minh | Cập nhật mỗi 5 giây</p>
+        <!-- Footer -->
+        <div class="footer">
+            🏠 Simon House Smart Air Monitoring | Tự động cập nhật mỗi 5 giây
+        </div>
     </div>
 
     <script>
@@ -452,323 +447,382 @@
         var tempHistory = [];
         var timeLabels = [];
         var maxDataPoints = 30;
-        var currentTemp = 0, currentHum = 0, currentAQI = 0;
-        var tempChart = null;
-        var userLocation = { lat: 21.0285, lon: 105.8542 }; // Hà Nội mặc định
+        
+        var currentTemp = 0, currentHum = 0, currentAQI = 0, currentCO2 = 0, currentPM25 = 0;
+        var currentGlobalWeatherCode = -1; 
+        
+        var currentAdviceMsg = "Hệ thống đang thu thập dữ liệu về không khí...";
+        var isDangerAlert = false;
+        var currentDangerMsg = "";
 
-        // === LẤY VỊ TRÍ NGƯỜI DÙNG ===
-        function getUserLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        userLocation = {
-                            lat: position.coords.latitude,
-                            lon: position.coords.longitude
-                        };
-                        fetchWeather();
-                    },
-                    function(error) {
-                        console.log("Không lấy được vị trí, dùng Hà Nội");
-                        fetchWeather();
-                    }
-                );
+        var tempChart = null;
+        var aqiChartObj = null;
+        var pm25ChartObj = null;
+
+        var userLocation = { lat: 10.7626, lon: 106.6601 }; // Hồ Chí Minh mặc định
+
+        // === CĂN BẢN (DARK MODE) ===
+        function toggleTheme() {
+            var body = document.body;
+            var btn = document.getElementById("themeToggle");
+            if (body.classList.contains("dark-mode")) {
+                body.classList.remove("dark-mode");
+                localStorage.setItem("theme", "light");
+                btn.innerText = "🌙";
             } else {
-                fetchWeather();
+                body.classList.add("dark-mode");
+                localStorage.setItem("theme", "dark");
+                btn.innerText = "☀️";
+            }
+            // Cập nhật biểu diễn chart lại sau khi đổi màu
+            if (tempChart) tempChart.update();
+            if (aqiChartObj) aqiChartObj.update();
+            if (pm25ChartObj) pm25ChartObj.update();
+        }
+
+        (function loadTheme() {
+            var saved = localStorage.getItem("theme");
+            if (saved === "dark") {
+                document.body.classList.add("dark-mode");
+                document.getElementById("themeToggle").innerText = "☀️";
+            }
+        })();
+
+        // === LẤY VỊ TRÍ & THỜI TIẾT ===
+        function getUserLocation() {
+            fetchWeather();
+        }
+
+        function removeSkeleton(id, val="") {
+            var el = document.getElementById(id);
+            if (el) {
+                el.classList.remove("skeleton");
+                if (val !== "") el.innerText = val;
             }
         }
 
-        // === GỌI API THỜI TIẾT ===
         function fetchWeather() {
             var url = `https://api.open-meteo.com/v1/forecast?latitude=${userLocation.lat}&longitude=${userLocation.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,pressure_msl,visibility&hourly=temperature_2m,weather_code&timezone=Asia/Bangkok`;
-            
             fetch(url)
                 .then(response => response.json())
                 .then(data => updateWeatherUI(data))
                 .catch(error => console.log("Lỗi lấy thời tiết:", error));
         }
 
-        // === CẬP NHẬT GIAO DIỆN THỜI TIẾT ===
         function updateWeatherUI(data) {
             var current = data.current;
             var hourly = data.hourly;
-
-            // Cập nhật thời tiết hiện tại
             var weatherCode = current.weather_code;
+            currentGlobalWeatherCode = weatherCode; 
+            
             var temp = Math.round(current.temperature_2m);
             var humidity = current.relative_humidity_2m;
             var windSpeed = Math.round(current.wind_speed_10m);
             var pressure = Math.round(current.pressure_msl);
             var visibility = Math.round(current.visibility / 1000);
 
-            document.getElementById("weatherTemp").innerText = temp;
+            removeSkeleton("weatherTemp", temp);
+            removeSkeleton("weatherWind", windSpeed + " km/h");
+            removeSkeleton("weatherHumidity", humidity + "%");
+            removeSkeleton("weatherPressure", pressure + " mb");
+            removeSkeleton("weatherVisibility", visibility + " km");
+
             document.getElementById("weatherDesc").innerText = getWeatherDescription(weatherCode);
             document.getElementById("weatherIcon").innerText = getWeatherIcon(weatherCode);
-            document.getElementById("weatherWind").innerText = windSpeed + " km/h";
-            document.getElementById("weatherHumidity").innerText = humidity + "%";
-            document.getElementById("weatherPressure").innerText = pressure + " mb";
-            document.getElementById("weatherVisibility").innerText = visibility + " km";
+            document.getElementById("weatherLocation").innerText = "TP. Hồ Chí Minh";
 
-            // Lấy tên thành phố (đơn giản)
-            var cityName = userLocation.lat > 20 ? "Hà Nội" : "TP.HCM";
-            document.getElementById("weatherLocation").innerText = cityName;
-
-            // Cập nhật dự báo 24 giờ
-            updateForecast(hourly, data.current_time);
+            updateForecast(hourly); 
+            updateGreeting();       
         }
 
-        // === CẬP NHẬT FORECAST ===
-        function updateForecast(hourly, currentTime) {
-            var container = document.getElementById("forecastContainer");
-            container.innerHTML = "";
+        // === LỜI CHÀO VÀ THÔNG BÁO ===
+        function updateGreeting() {
+            var greeting = document.getElementById('greetingText');
+            var icon = document.getElementById('greetingIcon');
+            var hour = new Date().getHours();
+            
+            var timeMsg = '';
+            var timeIcon = '👋';
+            if (hour >= 5 && hour < 11) { timeMsg = 'Chào buổi sáng! Một ngày đầy năng lượng nhé.'; timeIcon = '🌅'; }
+            else if (hour >= 11 && hour < 14) { timeMsg = 'Buổi trưa vui vẻ nha!'; timeIcon = '🌤️'; }
+            else if (hour >= 14 && hour < 18) { timeMsg = 'Chào buổi chiều! Cố lên nhé.'; timeIcon = '☕'; }
+            else if (hour >= 18 && hour < 22) { timeMsg = 'Chào buổi tối! Dành thời gian thư giãn nhé.'; timeIcon = '🌆'; }
+            else { timeMsg = 'Đã khuya rồi, chúc bạn ngủ ngon!'; timeIcon = '🌙'; }
 
-            // Lấy 8 điểm dự báo (mỗi 3 giờ)
-            for (var i = 0; i < Math.min(8, hourly.time.length); i += 3) {
-                var time = hourly.time[i];
-                var temp = hourly.temperature_2m[i];
-                var weatherCode = hourly.weather_code[i];
-                
-                var hour = new Date(time).getHours().toString().padStart(2, '0') + ':00';
-                
-                var forecastDiv = document.createElement("div");
-                forecastDiv.className = "forecast-item";
-                forecastDiv.innerHTML = `
-                    <div class="forecast-time">${hour}</div>
-                    <div>${getWeatherIcon(weatherCode)}</div>
-                    <div class="forecast-temp">${Math.round(temp)}°C</div>
-                `;
-                container.appendChild(forecastDiv);
+            greeting.innerHTML = `<strong>${timeMsg}</strong>`;
+            icon.innerText = timeIcon;
+
+            var adviceMsg = currentAdviceMsg;
+            if (currentGlobalWeatherCode !== -1) {
+                if (currentGlobalWeatherCode >= 51 && currentGlobalWeatherCode <= 67) {
+                    adviceMsg = 'Hôm nay trời có khả năng mưa 🌧️, nhớ mang áo mưa nhé!';
+                } else if (currentGlobalWeatherCode >= 80 && currentGlobalWeatherCode <= 99) {
+                    adviceMsg = 'CẢNH BÁO: Đang có mưa to hoặc giông bão ⛈️. Hạn chế ra đường!';
+                } else if (currentGlobalWeatherCode === 0 || currentGlobalWeatherCode === 1) { 
+                    if (hour >= 9 && hour <= 16) {
+                        adviceMsg = 'Hôm nay trời nắng rất gắt 🌞, nhớ mặc áo khoác nhé!';
+                    } else {
+                        adviceMsg = 'Thời tiết quang đãng rất đẹp, lý tưởng để đi dạo! 🌿';
+                    }
+                } else if (currentGlobalWeatherCode === 2 || currentGlobalWeatherCode === 3) {
+                    adviceMsg = 'Thời tiết nhiều mây ⛅, không khí khá mát mẻ dễ chịu.';
+                } else if (currentGlobalWeatherCode === 45 || currentGlobalWeatherCode === 48) {
+                    adviceMsg = 'Ngoài đường đang có sương mù 🌫️. Lái xe chậm & cẩn thận nhé!';
+                }
+            }
+            
+            if (currentPM25 > 50) {
+                adviceMsg = 'Báo động: Bụi PM2.5 rất cao (' + currentPM25 + ' µg). Bật ngay máy lọc không khí! 😷';
+            } else if (currentAQI >= 3) {
+                adviceMsg = 'Báo động: Không khí phòng đang kém (AQI cao)! Bật lọc khí hoặc mở cửa sổ! ⚠️';
+            } else if (currentCO2 > 1000) { 
+                adviceMsg = 'Phòng đang ngột ngạt (eCO2 cao). Mở cửa để cấp thêm Oxy nhé! 😮‍💨';
+            }
+
+            currentAdviceMsg = adviceMsg;
+            renderAlertBox(); 
+        }
+
+        function handleAlert(msg) {
+            if (msg.includes("CANH BAO") || msg.includes("O NHIEM") || msg.includes("DANGER")) {
+                isDangerAlert = true;
+                currentDangerMsg = msg;
+            } else {
+                isDangerAlert = false;
+            }
+            renderAlertBox();
+        }
+
+        function renderAlertBox() {
+            var box = document.getElementById("alert-box");
+            if (isDangerAlert) {
+                box.innerText = currentDangerMsg;
+                box.className = "banner alert-banner danger";
+            } else {
+                box.innerText = "💡 Lời nhắc: " + currentAdviceMsg;
+                if (currentAdviceMsg.includes("Báo động")) box.className = "banner alert-banner danger";
+                else box.className = "banner alert-banner warning";
             }
         }
 
-        // === HÀM CHUYỂN ĐỔI WEATHER CODE ===
-        function getWeatherIcon(code) {
-            if (code === 0) return "☀️";
-            if (code === 1 || code === 2) return "🌤️";
-            if (code === 3) return "☁️";
-            if (code === 45 || code === 48) return "🌫️";
-            if (code >= 51 && code <= 67) return "🌧️";
-            if (code >= 71 && code <= 77 || code === 85 || code === 86) return "❄️";
-            if (code >= 80 && code <= 82) return "⛈️";
-            if (code === 95 || code === 96 || code === 99) return "⛈️";
-            return "🌥️";
+        // === CHART GAUGE (ĐỒNG HỒ) ===
+        function getGaugeColor(val, type) {
+            if (type === "AQI") {
+                if (val <= 1) return "#10b981"; // Excellent
+                if (val <= 2) return "#facc15"; // Good
+                if (val <= 3) return "#fb923c"; // Moderate
+                if (val <= 4) return "#ef4444"; // Poor
+                return "#7f1d1d"; // Severe
+            }
+            if (type === "PM25") {
+                if (val <= 12) return "#10b981"; 
+                if (val <= 35) return "#facc15";
+                if (val <= 55) return "#fb923c";
+                if (val <= 150) return "#ef4444";
+                return "#7f1d1d";
+            }
+            return "#4f46e5";
         }
 
-        function getWeatherDescription(code) {
-            if (code === 0) return "Trời tươi sáng";
-            if (code === 1 || code === 2) return "Phần lớn quang đẹp";
-            if (code === 3) return "Có mây";
-            if (code === 45 || code === 48) return "Sương mù";
-            if (code >= 51 && code <= 67) return "Có mưa nhỏ";
-            if (code >= 71 && code <= 77 || code === 85 || code === 86) return "Tuyết";
-            if (code >= 80 && code <= 82) return "Có mưa rào";
-            if (code === 95 || code === 96 || code === 99) return "Bão tố";
-            return "Thay đổi";
+        function createGauge(ctx, value, maxVal) {
+            return new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [value, Math.max(0, maxVal - value)],
+                        backgroundColor: ["#10b981", "rgba(100, 116, 139, 0.2)"],
+                        borderWidth: 0,
+                        circumference: 180,
+                        rotation: -90,
+                        borderRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: { tooltip: { enabled: false }, legend: { display: false } },
+                    animation: { duration: 1000, easing: 'easeOutBounce' }
+                }
+            });
         }
 
-        // === CẤU HÌNH HIVEMQ CLOUD ===
-        var mqtt_server = "e35ff2a8c16f4c60981704de63982340.s1.eu.hivemq.cloud"; 
-        var mqtt_port = 8884;
-        
-        var mqtt_user = "Huflit"; 
-        var mqtt_pass = "Huflit123456";
+        function updateGauge(chart, val, maxVal, type) {
+            if (!chart) return;
+            chart.data.datasets[0].data = [val, Math.max(0, maxVal - val)];
+            chart.data.datasets[0].backgroundColor[0] = getGaugeColor(val, type);
+            // Cập nhật background nếu dark mode
+            var isDark = document.body.classList.contains("dark-mode");
+            chart.data.datasets[0].backgroundColor[1] = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(100, 116, 139, 0.1)";
+            chart.update();
+        }
 
-        var client = new Paho.MQTT.Client(mqtt_server, mqtt_port, "Web_" + new Date().getTime());
+        // === BIỂU ĐỒ CHÍNH ===
+        function initCharts() {
+            var ctxT = document.getElementById('tempChart').getContext('2d');
+            var gradient = ctxT.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(79, 70, 229, 0.25)');
+            gradient.addColorStop(1, 'rgba(79, 70, 229, 0.0)');
 
-        client.onConnectionLost = onConnectionLost;
-        client.onMessageArrived = onMessageArrived;
-
-        var options = {
-            useSSL: true,
-            userName: mqtt_user,
-            password: mqtt_pass,
-            onSuccess: onConnect,
-            onFailure: onFail
-        };
-
-        console.log("Đang kết nối đến HiveMQ...");
-        client.connect(options);
-
-        // === KHỞI TẠO BIỂU ĐỒ ===
-        function initChart() {
-            var ctx = document.getElementById('tempChart').getContext('2d');
-            tempChart = new Chart(ctx, {
+            tempChart = new Chart(ctxT, {
                 type: 'line',
                 data: {
                     labels: timeLabels,
                     datasets: [{
                         label: 'Nhiệt độ (°C)',
                         data: tempHistory,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        borderWidth: 2,
+                        borderColor: '#4f46e5',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
                         fill: true,
                         tension: 0.4,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#667eea',
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#4f46e5',
                         pointBorderColor: '#fff',
                         pointBorderWidth: 2,
-                        pointHoverRadius: 6
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            labels: {
-                                font: { size: 12, weight: 'bold' }
-                            }
-                        }
-                    },
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
                     scales: {
-                        y: {
-                            beginAtZero: false,
-                            ticks: { font: { size: 11 } }
+                        y: { 
+                            grid: { color: (ctx) => document.body.classList.contains("dark-mode") ? 'rgba(255,255,255,0.05)' : '#f1f5f9' },
+                            ticks: { color: '#64748b' }
                         },
-                        x: {
-                            ticks: { font: { size: 10 } }
-                        }
-                    }
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 6 } }
+                    },
+                    interaction: { intersect: false, mode: 'index' },
                 }
             });
+
+            // Init Gauges
+            aqiChartObj = createGauge(document.getElementById('aqiGauge').getContext('2d'), 0, 5);
+            pm25ChartObj = createGauge(document.getElementById('pm25Gauge').getContext('2d'), 0, 150);
         }
 
-        // === THÊM DỮ LIỆU VÀO BIỂU ĐỒ ===
         function addTempData(temp) {
             var now = new Date();
-            var timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
-                         now.getMinutes().toString().padStart(2, '0');
-            
+            var timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
             tempHistory.push(parseFloat(temp));
             timeLabels.push(timeStr);
 
-            if (tempHistory.length > maxDataPoints) {
-                tempHistory.shift();
-                timeLabels.shift();
-            }
-
-            if (tempChart) {
-                tempChart.data.labels = timeLabels;
-                tempChart.data.datasets[0].data = tempHistory;
-                tempChart.update('none');
-            }
+            if (tempHistory.length > maxDataPoints) { tempHistory.shift(); timeLabels.shift(); }
+            if (tempChart) { tempChart.update('none'); }
         }
 
-        // === CẬP NHẬT LỜI CHÀO HỎI ===
-        function updateGreeting() {
-            var greeting = document.getElementById('greetingText');
-            var icon = document.getElementById('greetingIcon');
-            var hour = new Date().getHours();
-            var message = '';
+        // === MQTT LOGIC ===
+        var mqtt_server = "e35ff2a8c16f4c60981704de63982340.s1.eu.hivemq.cloud";
+        var mqtt_port = 8884;
+        var client = new Paho.MQTT.Client(mqtt_server, mqtt_port, "Web_" + new Date().getTime());
 
-            if (currentTemp === 0 && currentHum === 0) {
-                message = 'Chào bạn! Hệ thống đang làm việc...';
-                icon.innerText = '👋';
-            }
-            // Dựa vào nhiệt độ và độ ẩm để dự báo thời tiết
-            else if (currentHum > 70 && currentTemp < 20) {
-                message = '🌧️ Chào bạn! Dự báo hôm nay trời sẽ có mưa. Hãy nhớ mang theo dù và áo mưa nhé!';
-                icon.innerText = '🌧️';
-            }
-            else if (currentHum > 75) {
-                message = '💧 Chào bạn! Độ ẩm khá cao hôm nay. Nhớ uống đủ nước nhé!';
-                icon.innerText = '💧';
-            }
-            else if (currentTemp > 28 && currentHum < 60) {
-                message = '☀️ Hi bạn! Trời nắng nóng hôm nay. Hãy nhớ mang áo khoát chống nắng nhé!';
-                icon.innerText = '☀️';
-            }
-            else if (currentTemp > 25 && currentHum < 50) {
-                message = '🌞 Xin chào! Thời tiết rất đẹp. Hãy bảo vệ da bằng kem chống nắng nhé!';
-                icon.innerText = '🌞';
-            }
-            else if (currentTemp < 15) {
-                message = '❄️ Chào bạn! Hôm nay trời lạnh. Nhớ mặc thêm áo ấm nhé!';
-                icon.innerText = '❄️';
-            }
-            else if (currentAQI >= 3) {
-                message = '⚠️ Chào bạn! Chất lượng không khí không tốt ngay bây giờ. Nên giảm hoạt động ngoài trời!';
-                icon.innerText = '⚠️';
-            }
-            else {
-                if (hour >= 5 && hour < 12) message = '🌅 Chào buổi sáng! Ngày mới tốt lành!';
-                else if (hour >= 12 && hour < 17) message = '☀️ Chào buổi chiều bạn! Hãy nghỉ ngơi đủ đầu!';
-                else if (hour >= 17 && hour < 21) message = '🌆 Chào buổi tối! Đây là lúc thư giãn!';
-                else message = '🌙 Buổi tối vui vẻ! Hãy có giấc ngủ sâu!';
-                icon.innerText = ['🌅', '☀️', '🌆', '🌙'][
-                    hour >= 5 && hour < 12 ? 0 : 
-                    hour >= 12 && hour < 17 ? 1 : 
-                    hour >= 17 && hour < 21 ? 2 : 3
-                ];
-            }
-
-            greeting.innerText = message;
-        }
-
-        // === HÀM MQTT ===
-        function onConnect() {
-            console.log("✅ KẾT NỐI THÀNH CÔNG!");
-            document.getElementById("status").innerText = "🟢 Đã kết nối HiveMQ Cloud";
-            initChart();
-            client.subscribe("simon_house/air/#");
-        }
-
-        function onFail(responseObject) {
-            console.log("❌ Lỗi kết nối: " + responseObject.errorMessage);
-            document.getElementById("status").innerText = "🔴 Lỗi kết nối";
-        }
-
-        function onConnectionLost(responseObject) {
+        client.onConnectionLost = function(responseObject) {
             if (responseObject.errorCode !== 0) {
-                console.log("Mất kết nối");
-                document.getElementById("status").innerText = "🟡 Mất kết nối...";
+                document.getElementById("status").innerHTML = `<span class="status-dot"></span> Mất kết nối`;
+                document.getElementById("status").className = "status warning";
             }
-        }
+        };
 
-        function onMessageArrived(message) {
+        client.onMessageArrived = function(message) {
             var topic = message.destinationName;
             var msg = message.payloadString;
-            console.log("Nhận [" + topic + "]: " + msg);
 
             if (topic.includes("temp")) {
-                document.getElementById("temp").innerText = msg;
+                removeSkeleton("temp", msg);
                 currentTemp = parseFloat(msg);
-                addTempData(msg);
-                updateGreeting();
+                addTempData(msg); updateGreeting();
             }
             else if (topic.includes("hum")) {
-                document.getElementById("hum").innerText = msg;
-                currentHum = parseFloat(msg);
+                removeSkeleton("hum", msg);
+                currentHum = parseFloat(msg); updateGreeting();
+            }
+            else if (topic.includes("pm25")) {
+                removeSkeleton("pm25", msg);
+                currentPM25 = parseFloat(msg);
+                updateGauge(pm25ChartObj, currentPM25, 150, "PM25");
                 updateGreeting();
             }
             else if (topic.includes("aqi")) {
-                document.getElementById("aqi").innerText = msg;
+                removeSkeleton("aqi", msg);
                 currentAQI = parseInt(msg);
+                updateGauge(aqiChartObj, currentAQI, 5, "AQI");
                 updateGreeting();
             }
-            else if (topic.includes("eco2")) document.getElementById("eco2").innerText = msg;
-            else if (topic.includes("tvoc")) document.getElementById("tvoc").innerText = msg;
-            else if (topic.includes("alert")) handleAlert(msg);
+            else if (topic.includes("eco2")) {
+                removeSkeleton("eco2", msg);
+                currentCO2 = parseInt(msg); updateGreeting();
+            }
+            else if (topic.includes("tvoc")) {
+                removeSkeleton("tvoc", msg); updateGreeting();
+            }
+            else if (topic.includes("alert")) {
+                handleAlert(msg);
+            }
+        };
+
+        console.log("Đang kết nối đến HiveMQ...");
+        client.connect({
+            useSSL: true, userName: "Huflit", password: "Huflit123456",
+            onSuccess: function() {
+                document.getElementById("status").innerHTML = `<span class="status-dot"></span> Đã kết nối`;
+                document.getElementById("status").className = "status connected";
+                initCharts();
+                client.subscribe("simon_house/air/#");
+            },
+            onFailure: function() {
+                document.getElementById("status").innerHTML = `<span class="status-dot"></span> Lỗi kết nối`;
+                document.getElementById("status").className = "status disconnected";
+            }
+        });
+
+        // === CSV EXPORT ===
+        function exportCSV() {
+            if (tempHistory.length === 0) {
+                alert("Chưa có đủ dữ liệu để xuất Excel.");
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Thời gian,Nhiệt độ (°C)\n";
+            for (let i = 0; i < timeLabels.length; i++) {
+                csvContent += timeLabels[i] + "," + tempHistory[i] + "\n";
+            }
+            var encodedUri = encodeURI(csvContent);
+            var link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "Lich_su_Nhiet_do_" + new Date().toLocaleDateString() + ".csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
-        function handleAlert(msg) {
-            var box = document.getElementById("alert-box");
-            box.innerText = msg;
-            
-            if (msg.includes("CANH BAO") || msg.includes("O NHIEM") || msg.includes("DANGER")) {
-                box.className = "alert-box danger";
-            } else if (msg.includes("An toan") || msg.includes("SAFE")) {
-                box.className = "alert-box safe";
-            } else {
-                box.className = "alert-box warning";
+        // --- Helpers ---
+        function updateForecast(hourly) {
+            var container = document.getElementById("forecastContainer");
+            container.innerHTML = "";
+            for (var i = 0; i < Math.min(8, hourly.time.length); i += 3) {
+                var time = hourly.time[i]; var temp = hourly.temperature_2m[i]; var code = hourly.weather_code[i];
+                var hour = new Date(time).getHours().toString().padStart(2, '0') + ':00';
+                var div = document.createElement("div"); div.className = "forecast-item";
+                div.innerHTML = `<div class="f-time">${hour}</div><div class="f-icon">${getWeatherIcon(code)}</div><div class="f-temp">${Math.round(temp)}°C</div>`;
+                container.appendChild(div);
             }
         }
+        function getWeatherIcon(code) {
+            if (code===0) return "☀️"; if (code===1||code===2) return "🌤️"; if (code===3) return "☁️";
+            if (code===45||code===48) return "🌫️"; if (code>=51&&code<=67) return "🌧️";
+            if (code>=71&&code<=77||code===85||code===86) return "❄️"; 
+            if (code>=80&&code<=82||code===95||code===96||code===99) return "⛈️"; return "🌥️";
+        }
+        function getWeatherDescription(code) {
+            if (code===0) return "Trời trong xanh"; if (code===1||code===2) return "Quang mây";
+            if (code===3) return "Nhiều mây"; if (code===45||code===48) return "Sương mù";
+            if (code>=51&&code<=67) return "Mưa nhỏ"; if (code>=71&&code<=77||code===85||code===86) return "Tuyết";
+            if (code>=80&&code<=82) return "Mưa rào"; if (code===95||code===96||code===99) return "Giông bão"; return "Trời thay đổi";
+        }
 
-        // === CẬP NHẬT LỜI CHÀO BAN ĐẦU ===
         updateGreeting();
-        
-        // === KHỞI ĐỘNG LẤY THỜI TIẾT ===
         getUserLocation();
     </script>
 </body>
