@@ -184,6 +184,7 @@
         .ic-eco2 { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
         .ic-tvoc { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
         .ic-pm25 { background: rgba(100, 116, 139, 0.15); color: #8ba2c4; }
+        .ic-uv { background: rgba(234, 179, 8, 0.15); color: #eab308; }
 
         .metric-title { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
         .metric-value { font-size: 1.75rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; display: flex; align-items: baseline; gap: 4px; }
@@ -379,6 +380,16 @@
                         </div>
                         <div class="metric-value"><span id="tvoc" class="skeleton">0000</span><span class="metric-unit">ppb</span></div>
                     </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon ic-uv">☀️</div>
+                            <div class="metric-title">Chỉ số UV
+                                <div class="info-btn">?<span class="tooltip-text">Tia cực tím. Dưới 3: An toàn. Từ 3-5: Trung bình. Trên 8: Rất cao, nên tránh trực tiếp dưới nắng.</span></div>
+                            </div>
+                        </div>
+                        <div class="metric-value"><span id="uv" class="skeleton">00.0</span><span class="metric-unit">Index</span></div>
+                    </div>
                 </div>
 
                 <!-- Chart -->
@@ -451,7 +462,7 @@
         var timeLabels = [];
         var maxDataPoints = 30;
         
-        var currentTemp = 0, currentHum = 0, currentAQI = 0, currentCO2 = 0, currentPM25 = 0, currentTVOC = 0;
+        var currentTemp = 0, currentHum = 0, currentAQI = 0, currentCO2 = 0, currentPM25 = 0, currentTVOC = 0, currentUV = 0;
         var currentGlobalWeatherCode = -1; 
         
         var currentAdviceMsg = "Hệ thống đang thu thập dữ liệu về không khí...";
@@ -762,6 +773,11 @@
                 currentTVOC = parseFloat(msg) || 0;
                 updateGreeting();
             }
+            else if (topic.includes("uv")) {
+                removeSkeleton("uv", msg);
+                currentUV = parseFloat(msg) || 0;
+                updateGreeting();
+            }
             else if (topic.includes("alert")) {
                 handleAlert(msg);
             }
@@ -803,7 +819,8 @@
                 pm25: currentPM25,
                 aqi: currentAQI,
                 eco2: currentCO2,
-                tvoc: currentTVOC
+                tvoc: currentTVOC,
+                uv: currentUV
             });
             
             try {
@@ -832,11 +849,11 @@
             
             // Dùng Blob + BOM (\uFEFF) giúp Excel chống lỗi font Tiếng Việt và chia cột đúng chuẩn
             let csvData = "\uFEFF";
-            csvData += "Thời gian,Nhiệt độ (°C),Độ ẩm (%),Bụi PM2.5 (µg/m³),AQI (Index),eCO2 (ppm),TVOC (ppb)\n";
+            csvData += "Thời gian,Nhiệt độ (°C),Độ ẩm (%),Bụi PM2.5 (µg/m³),AQI (Index),eCO2 (ppm),TVOC (ppb),Chỉ số UV\n";
             
             for (let i = 0; i < history.length; i++) {
                 let h = history[i];
-                csvData += `"${h.timeStr}",${h.temp},${h.hum},${h.pm25},${h.aqi},${h.eco2},${h.tvoc}\n`;
+                csvData += `"${h.timeStr}",${h.temp},${h.hum},${h.pm25},${h.aqi},${h.eco2},${h.tvoc},${h.uv || 0}\n`;
             }
             
             var blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
