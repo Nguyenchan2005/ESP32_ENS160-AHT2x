@@ -3,16 +3,18 @@
  * Project  : IoT-Based Solar-Powered Weather & Air Quality
  *            Monitoring Station
  * File     : main.ino
- * Hardware : ESP8266 NodeMCU (or ESP32-compatible)
+ * Hardware : ESP8266 NodeMCU
  *            + ENS160 Air Quality Sensor (I2C, addr 0x53)
  *            + AHT2x Temperature & Humidity Sensor (I2C)
+ * Note     : This file uses ESP32 WiFi.h by default. For ESP8266, replace
+ *            `#include <WiFi.h>` with `#include <ESP8266WiFi.h>`.
  * Protocol : MQTT over TCP (HiveMQ public/cloud broker)
  * Authors  : Nguyễn Việt Chân, Đỗ Minh Phúc, Hà Thanh Sang
  * Date     : 2026
  * ============================================================
  */
 
-#include <WiFi.h>             // Use ESP8266WiFi.h for ESP8266 boards
+#include <WiFi.h>             // For ESP32 — replace with ESP8266WiFi.h for ESP8266 boards
 #include <PubSubClient.h>
 #include <Wire.h>
 #include <Adafruit_AHTX0.h>

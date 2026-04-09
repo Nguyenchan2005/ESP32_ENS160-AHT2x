@@ -63,3 +63,21 @@ client.connect({
 ```
 
 Replace `mqtt_server`, `userName`, and `password` with your own HiveMQ Cloud (or other broker) credentials.
+
+> **Security note:** Never commit real credentials to a public repository. Move sensitive values to a separate `config.js` file that is excluded via `.gitignore`, or use environment variables.
+
+---
+
+## Customising the Location
+
+The dashboard default coordinates are set to Ho Chi Minh City (Su Van Hanh Campus). To change the weather location, update the `userLocation` variable near the top of the `<script>` section in `dashboard.html`:
+
+```js
+var userLocation = { lat: YOUR_LAT, lon: YOUR_LON }; // Your location
+```
+
+The location label shown in the weather widget is set a few lines further down:
+
+```js
+document.getElementById("weatherLocation").innerText = "Your Location Name";
+```

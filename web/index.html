@@ -477,7 +477,7 @@
         var aqiChartObj = null;
         var pm25ChartObj = null;
 
-        var userLocation = { lat: 10.7766, lon: 106.6670 }; // Su Van Hanh Campus area
+        var userLocation = { lat: 10.7766, lon: 106.6670 }; // TODO: Change to your location coordinates
 
         // === THEME (DARK MODE) ===
         function toggleTheme() {
@@ -732,6 +732,8 @@
         }
 
         // === MQTT LOGIC ===
+        // TODO: Replace credentials below with your own broker settings.
+        //       Do not commit real credentials to a public repository.
         var mqtt_server = "e35ff2a8c16f4c60981704de63982340.s1.eu.hivemq.cloud";
         var mqtt_port = 8884;
         var client = new Paho.MQTT.Client(mqtt_server, mqtt_port, "Web_" + new Date().getTime());
