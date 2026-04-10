@@ -97,3 +97,11 @@ LM2596S Buck Converter (set to 5V output)
                   VIN (5V) ─── LM2596 output
                   PMS7003 VCC ─ LM2596 output (5V)
 ```
+
+---
+
+## Actual Wiring Inside Enclosure
+
+The image below shows the internal layer structure of the enclosure, illustrating how components are positioned within the sensor shield assembly.
+
+<img src="images/box_02.png" alt="Enclosure interior — exploded view showing component layers" width="500">
