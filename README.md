@@ -23,7 +23,7 @@
 - [Live Demo](#-live-demo)
 - [Project Structure](#-project-structure)
 - [Research Background](#-research-background)
-- [Team](#-team)
+- [Author](#-author)
 - [License](#-license)
 - [Acknowledgements](#-acknowledgements)
 
@@ -180,17 +180,13 @@ Air pollution is a growing concern in Vietnamese urban environments, particularl
 
 This project explores a low-cost, open-source, solar-powered alternative that integrates multiple IoT sensors onto a single ESP8266 platform. By combining reliable embedded firmware, MQTT-based telemetry, and a browser-based dashboard, the station provides continuous, real-time environmental data without reliance on mains electricity — making it suitable for deployment in remote or off-grid locations.
 
-The work was carried out as part of an academic research project at HUFLIT University, following sensor calibration and evaluation methodologies informed by World Meteorological Organization (WMO) guidelines for environmental monitoring.
+The work was carried out as an individual academic research project at HUFLIT University, following sensor calibration and evaluation methodologies informed by World Meteorological Organization (WMO) guidelines for environmental monitoring.
 
 ---
 
-## 👥 Team
+## 👤 Author
 
-| Name | Role |
-|---|---|
-| Nguyễn Việt Chân | Firmware, MQTT integration, project lead |
-| Đỗ Minh Phúc | Hardware design, wiring, power management |
-| Hà Thanh Sang | Web dashboard, documentation |
+**Nguyễn Việt Chân** — HUFLIT University
 
 ---
 
